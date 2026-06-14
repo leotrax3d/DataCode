@@ -7,10 +7,19 @@ Website, läuft komplett offline und über **GitHub Pages**, ohne Backend.
 
 ## Funktionen
 
-- **Zwei Modi:** Senden (Bildschirm mit Balken) und Empfangen (Handykamera).
+- **Zwei Übertragungsarten:**
+  - **Licht** (optisch): blinkende Balken Bildschirm → Kamera.
+  - **Audio** (akustisch): 16-Ton-FSK Lautsprecher → Mikrofon (4 Bit/Ton).
+- **Je Senden & Empfangen** als eigener Reiter.
 - **Text *und* Dateien:** Text eingeben oder Datei per Drag & Drop / Auswahl
   übertragen. Dateiname und MIME-Typ werden mitgesendet; der Empfänger bietet
   Download und (bei Bildern) eine Vorschau.
+- **Fehlerkorrektur (FEC):** Reed-Solomon über GF(256), blockweise mit
+  Interleaving gegen Bündelfehler – für Licht **und** Audio. Stufen
+  Keine/Leicht/Mittel/Stark. Wird automatisch aus dem Header erkannt.
+- **Schneller per Farben/Graustufen (optional):** Schwarz/Weiß (1 Bit/Balken),
+  4 Graustufen (2 Bit) oder 8 Farben (3 Bit). Muss bei Sender & Empfänger
+  gleich eingestellt sein.
 - **Restzeit & Tempo:** Sender zeigt die geschätzte Dauer pro Durchlauf,
   Empfänger zeigt Fortschritt, voraussichtliche Restzeit und Datenrate.
 - **Konfigurierbar:** Anzahl der Datenbalken (1–10) und Übertragungstempo.
@@ -40,10 +49,13 @@ Ablauf je Durchlauf:
 2. **Header + Nutzdaten** als Bitstrom, in Symbole zu je *n* Datenbits zerlegt:
 
    ```
-   SYNC(16) | TYPE(8) | LEN(32) | CRC32(32) | PAYLOAD(LEN·8) | ENDSYNC(16)
+   SYNC(16) | PARITY(8) | CODEDLEN(32) | CODED bytes | ENDSYNC(16)
    ```
+   Die innere, CRC-32-gesicherte Nachricht `TYPE(8) | LEN(32) | CRC32(32) |
+   PAYLOAD` wird (bei PARITY>0) per Reed-Solomon kodiert und verschachtelt.
    `TYPE` = Text (0) oder Datei (1). Datei-Nutzdaten sind selbstbeschreibend:
-   `nameLen(16) | name | mimeLen(16) | mime | dateiBytes`.
+   `nameLen(16) | name | mimeLen(16) | mime | dateiBytes`. Derselbe Bitstrom
+   wird für Licht (Balken) und Audio (Töne) verwendet.
 3. **Pause** (schwarz) als Trenner, danach Wiederholung.
 
 Der Empfänger erkennt Taktflanken, tastet die Datenbalken per
