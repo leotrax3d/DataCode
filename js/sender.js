@@ -1,8 +1,8 @@
 // sender.js — Visueller Sendemodus: Bitstrom als blinkende Balken.
 import { getPalette, colorCss } from './palette.js';
 
-export const CAL_SYMBOLS = 24; // Kalibrier-/Streifenphase
-export const GAP_SYMBOLS = 8; // schwarze Pause zwischen Durchläufen
+export const CAL_SYMBOLS = 18; // Kalibrier-/Streifenphase
+export const GAP_SYMBOLS = 6; // schwarze Pause zwischen Durchläufen
 
 const BLACK = 'rgb(0,0,0)';
 const WHITE = 'rgb(255,255,255)';
