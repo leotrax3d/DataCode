@@ -1,10 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Deployt nur vom Default-Branch (main). Die automatisch angelegte
+# Umgebung "github-pages" erlaubt Deployments standardmäßig nur von main,
+# daher würde ein Lauf vom Feature-Branch an der Schutzregel scheitern.
+# Nach dem Merge dieses PRs in main veröffentlicht dieser Workflow die Seite.
 on:
   push:
     branches:
       - main
-      - claude/github-pages-blink-transfer-fdx16r
   workflow_dispatch:
 
 permissions:
