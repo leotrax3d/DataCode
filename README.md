@@ -8,6 +8,11 @@ Website, läuft komplett offline und über **GitHub Pages**, ohne Backend.
 ## Funktionen
 
 - **Zwei Modi:** Senden (Bildschirm mit Balken) und Empfangen (Handykamera).
+- **Text *und* Dateien:** Text eingeben oder Datei per Drag & Drop / Auswahl
+  übertragen. Dateiname und MIME-Typ werden mitgesendet; der Empfänger bietet
+  Download und (bei Bildern) eine Vorschau.
+- **Restzeit & Tempo:** Sender zeigt die geschätzte Dauer pro Durchlauf,
+  Empfänger zeigt Fortschritt, voraussichtliche Restzeit und Datenrate.
 - **Konfigurierbar:** Anzahl der Datenbalken (1–10) und Übertragungstempo.
 - **Automatische Balkenerkennung:** Der Empfänger zählt die Balken selbst über
   ein Kalibrier-Streifenmuster am Anfang.
@@ -35,8 +40,10 @@ Ablauf je Durchlauf:
 2. **Header + Nutzdaten** als Bitstrom, in Symbole zu je *n* Datenbits zerlegt:
 
    ```
-   SYNC(16) | LEN(16) | CRC16(16) | PAYLOAD(LEN·8) | ENDSYNC(16)
+   SYNC(16) | TYPE(8) | LEN(32) | CRC32(32) | PAYLOAD(LEN·8) | ENDSYNC(16)
    ```
+   `TYPE` = Text (0) oder Datei (1). Datei-Nutzdaten sind selbstbeschreibend:
+   `nameLen(16) | name | mimeLen(16) | mime | dateiBytes`.
 3. **Pause** (schwarz) als Trenner, danach Wiederholung.
 
 Der Empfänger erkennt Taktflanken, tastet die Datenbalken per

@@ -21,16 +21,17 @@
       <section class="hero">
         <h1>Daten über blinkende Balken übertragen</h1>
         <p class="lead">
-          Übertrage Text optisch von einem Bildschirm zu einer Handykamera –
-          ganz ohne Netzwerk. Ähnlich einem TAN-Generator zeigt der Sender eine
-          konfigurierbare Anzahl schwarz/weiß blinkender Balken; der Empfänger
-          erkennt die Balkenzahl automatisch und rekonstruiert die Nachricht.
+          Übertrage Text <b>und Dateien</b> optisch von einem Bildschirm zu einer
+          Handykamera – ganz ohne Netzwerk. Ähnlich einem TAN-Generator zeigt der
+          Sender eine konfigurierbare Anzahl schwarz/weiß blinkender Balken; der
+          Empfänger erkennt die Balkenzahl automatisch, zeigt Fortschritt und
+          Restzeit und rekonstruiert die Daten prüfsummengesichert.
         </p>
         <div class="cards">
           <a class="card" href="#/send">
             <div class="card-ico">📤</div>
             <h2>Senden</h2>
-            <p>Text eingeben, Balkenzahl & Tempo wählen, Übertragung starten.</p>
+            <p>Text eingeben oder Datei ablegen, Balkenzahl & Tempo wählen, starten.</p>
           </a>
           <a class="card" href="#/receive">
             <div class="card-ico">📷</div>
@@ -55,10 +56,25 @@
     <section id="view-send" class="view">
       <div class="panel">
         <h2>Senden</h2>
-        <label class="field">
-          <span>Nachricht</span>
-          <textarea id="msg" rows="3" placeholder="Text zum Übertragen …">Hallo Welt!</textarea>
-        </label>
+        <div class="tabs">
+          <button id="tabText" class="tab active">📝 Text</button>
+          <button id="tabFile" class="tab">📎 Datei</button>
+        </div>
+        <div id="paneText">
+          <label class="field">
+            <span>Nachricht</span>
+            <textarea id="msg" rows="3" placeholder="Text zum Übertragen …">Hallo Welt!</textarea>
+          </label>
+        </div>
+        <div id="paneFile" class="hidden">
+          <div id="dropzone" class="dropzone">
+            <div class="dz-ico">📁</div>
+            <p>Datei hierher ziehen oder <span class="dz-link">auswählen</span></p>
+            <p class="hint">Optische Übertragung ist langsam – am besten kleine Dateien (wenige KB).</p>
+          </div>
+          <input id="fileInput" type="file" class="hidden" />
+          <div id="fileInfo" class="fileinfo hidden"></div>
+        </div>
         <div class="controls">
           <label class="field">
             <span>Datenbalken: <b id="barsCountVal">4</b> (+1 Takt)</span>
@@ -74,6 +90,7 @@
           <button id="stopSend">■ Stopp</button>
           <button id="fullscreen">⛶ Vollbild</button>
         </div>
+        <p id="estimate" class="estimate"></p>
         <p id="sendStatus" class="status"></p>
         <p class="hint">Tipp: niedrigeres Tempo = zuverlässiger. Den Sender-Bildschirm
           ruhig und gut sichtbar vor die Empfängerkamera halten.</p>
@@ -95,9 +112,9 @@
         </div>
         <p id="recvStatus" class="status">Kamera starten und die blinkenden Balken in den Rahmen bringen.</p>
         <div id="progressWrap" class="progress hidden"><div id="progressBar" class="progress-bar"></div></div>
+        <p id="etaLine" class="eta"></p>
         <div id="resultBox" class="result hidden">
-          <h3>✓ Empfangene Nachricht</h3>
-          <pre id="resultText"></pre>
+          <div id="resultBody"></div>
         </div>
         <p id="recvDebug" class="debug"></p>
         <p class="hint">Halte die Kamera so, dass alle Balken vollständig in den
