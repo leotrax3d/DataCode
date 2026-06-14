@@ -3,10 +3,14 @@
 //
 // Aufbau des Bitstroms (MSB-first):
 //   SYNC      16 Bit   Fester Erkennungswert (0xAC9D)
-//   LEN       16 Bit   Länge der Nutzdaten in Bytes
-//   CRC16     16 Bit   CRC-16/CCITT-FALSE über die Nutzdaten-Bytes
-//   PAYLOAD   LEN*8     UTF-8 kodierter Text
+//   TYPE       8 Bit   0 = Text (UTF-8), 1 = Datei
+//   LEN       32 Bit   Länge der Nutzdaten in Bytes
+//   CRC32     32 Bit   CRC-32 (IEEE) über die Nutzdaten-Bytes
+//   PAYLOAD   LEN*8     Nutzdaten
 //   ENDSYNC   16 Bit   Abschluss-Markierung (0x5A3C)
+//
+// Datei-Nutzdaten (TYPE = 1) sind selbstbeschreibend:
+//   nameLen 16 | name (UTF-8) | mimeLen 16 | mime (UTF-8) | dateiBytes …
 //
 // Die CRC dient gleichzeitig als Integritäts- UND als Sync-Validierung:
 // Nur eine vollständig korrekte Kopie erfüllt CRC + ENDSYNC, deshalb sind
@@ -14,53 +18,94 @@
 
 export const SYNC = 0xac9d;
 export const ENDSYNC = 0x5a3c;
-export const HEADER_BITS = 16 + 16 + 16; // SYNC + LEN + CRC
+export const HEADER_BITS = 16 + 8 + 32 + 32; // SYNC + TYPE + LEN + CRC
 export const END_BITS = 16;
+export const TYPE_TEXT = 0;
+export const TYPE_FILE = 1;
+const MAX_LEN = 25 * 1024 * 1024; // Plausibilitätsgrenze gegen Falsch-Syncs (25 MB)
 
-/** CRC-16/CCITT-FALSE (init 0xFFFF, poly 0x1021). */
-export function crc16(bytes) {
-  let crc = 0xffff;
-  for (const b of bytes) {
-    crc ^= b << 8;
-    for (let i = 0; i < 8; i++) {
-      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
-    }
+/** CRC-32 (IEEE 802.3, reflektiert). */
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
   }
-  return crc & 0xffff;
+  return t;
+})();
+
+export function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
 }
 
 /** Hängt `value` als `width` Bits (MSB-first) an das Bit-Array an. */
 function pushBits(bits, value, width) {
-  for (let i = width - 1; i >= 0; i--) {
-    bits.push((value >> i) & 1);
-  }
+  for (let i = width - 1; i >= 0; i--) bits.push((value >>> i) & 1);
 }
 
-/**
- * Baut den kompletten Bitstrom (Array aus 0/1) für einen gegebenen Text.
- * @returns {{ bits: number[], byteLength: number, crc: number }}
- */
-export function buildBitstream(text) {
-  const payload = new TextEncoder().encode(text);
-  if (payload.length > 0xffff) {
-    throw new Error('Nachricht zu lang (max. 65535 Bytes).');
-  }
-  const crc = crc16(payload);
+const utf8 = (s) => new TextEncoder().encode(s);
+
+/** Baut den kompletten Bitstrom für beliebige Nutzdaten-Bytes. */
+export function buildBitstream(type, payloadBytes) {
+  if (payloadBytes.length > MAX_LEN) throw new Error('Nutzdaten zu groß.');
+  const crc = crc32(payloadBytes);
   const bits = [];
   pushBits(bits, SYNC, 16);
-  pushBits(bits, payload.length, 16);
-  pushBits(bits, crc, 16);
-  for (const byte of payload) pushBits(bits, byte, 8);
+  pushBits(bits, type, 8);
+  pushBits(bits, payloadBytes.length, 32);
+  pushBits(bits, crc, 32);
+  for (let i = 0; i < payloadBytes.length; i++) pushBits(bits, payloadBytes[i], 8);
   pushBits(bits, ENDSYNC, 16);
-  return { bits, byteLength: payload.length, crc };
+  return { bits, byteLength: payloadBytes.length, crc };
+}
+
+/** Komfort: Text-Frame. */
+export function buildTextFrame(text) {
+  return buildBitstream(TYPE_TEXT, utf8(text));
+}
+
+/** Komfort: Datei-Frame mit Name + MIME-Typ. */
+export function buildFileFrame(name, mime, fileBytes) {
+  const nameB = utf8(name || 'datei');
+  const mimeB = utf8(mime || 'application/octet-stream');
+  const payload = new Uint8Array(2 + nameB.length + 2 + mimeB.length + fileBytes.length);
+  const dv = new DataView(payload.buffer);
+  let o = 0;
+  dv.setUint16(o, nameB.length); o += 2;
+  payload.set(nameB, o); o += nameB.length;
+  dv.setUint16(o, mimeB.length); o += 2;
+  payload.set(mimeB, o); o += mimeB.length;
+  payload.set(fileBytes, o);
+  return buildBitstream(TYPE_FILE, payload);
+}
+
+/** Interpretiert dekodierte Nutzdaten in ein nutzbares Objekt. */
+export function decodePayload(type, bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (type === TYPE_FILE) {
+    try {
+      const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+      let o = 0;
+      const nameLen = dv.getUint16(o); o += 2;
+      const name = new TextDecoder().decode(u8.subarray(o, o + nameLen)); o += nameLen;
+      const mimeLen = dv.getUint16(o); o += 2;
+      const mime = new TextDecoder().decode(u8.subarray(o, o + mimeLen)); o += mimeLen;
+      const data = u8.subarray(o);
+      return { kind: 'file', name, mime, bytes: data, size: data.length };
+    } catch {
+      return { kind: 'file', name: 'datei.bin', mime: 'application/octet-stream', bytes: u8, size: u8.length };
+    }
+  }
+  return { kind: 'text', text: bytesToText(u8) };
 }
 
 /** Liest `width` Bits ab Position `pos` als vorzeichenlose Zahl. */
 function readBits(buffer, pos, width) {
   let value = 0;
-  for (let i = 0; i < width; i++) {
-    value = (value << 1) | buffer[pos + i];
-  }
+  for (let i = 0; i < width; i++) value = (value << 1) | buffer[pos + i];
   return value >>> 0;
 }
 
@@ -84,8 +129,8 @@ export class Decoder {
   reset() {
     this.buffer = [];
     this.searchPos = 0;
-    this.solved = null; // { text, byteLength }
-    this.candidate = null; // { syncStart, byteLength, receivedBytes }
+    this.solved = null; // { type, bytes, byteLength }
+    this.candidate = null; // { syncStart, type, byteLength, receivedBytes }
   }
 
   /** Verwirft alten Puffer, behält aber ein bereits gelöstes Ergebnis. */
@@ -97,8 +142,7 @@ export class Decoder {
 
   append(newBits) {
     for (const b of newBits) this.buffer.push(b);
-    // Puffer begrenzen, damit er nicht unbegrenzt wächst.
-    const MAX = 200000;
+    const MAX = 4_000_000;
     if (this.buffer.length > MAX) {
       const drop = this.buffer.length - MAX;
       this.buffer.splice(0, drop);
@@ -113,41 +157,45 @@ export class Decoder {
     for (let pos = this.searchPos; pos + 16 <= buf.length; pos++) {
       if (readBits(buf, pos, 16) !== SYNC) continue;
 
-      // Genug Bits für den Header?
       if (pos + HEADER_BITS > buf.length) {
-        // SYNC erkannt, aber Header noch unvollständig -> warten.
-        this.candidate = { syncStart: pos, byteLength: null, receivedBytes: 0 };
+        this.candidate = { syncStart: pos, type: null, byteLength: null, receivedBytes: 0 };
         return;
       }
 
-      const len = readBits(buf, pos + 16, 16);
-      const crc = readBits(buf, pos + 32, 16);
+      const type = readBits(buf, pos + 16, 8);
+      const len = readBits(buf, pos + 24, 32);
+      const crc = readBits(buf, pos + 56, 32);
+
+      if (len > MAX_LEN) {
+        // unplausible Länge -> Falsch-Sync, weitersuchen
+        this.searchPos = pos + 1;
+        continue;
+      }
+
       const payloadStart = pos + HEADER_BITS;
       const totalBits = HEADER_BITS + len * 8 + END_BITS;
 
       if (pos + totalBits > buf.length) {
-        // Vollständige Nutzdaten noch nicht da -> Fortschritt melden.
         const availPayloadBits = Math.max(0, buf.length - payloadStart);
         this.candidate = {
           syncStart: pos,
+          type,
           byteLength: len,
           receivedBytes: Math.min(len, Math.floor(availPayloadBits / 8)),
         };
         return;
       }
 
-      // Vollständiger Frame liegt vor -> prüfen.
-      const bytes = [];
-      for (let i = 0; i < len; i++) bytes.push(readBits(buf, payloadStart + i * 8, 8));
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = readBits(buf, payloadStart + i * 8, 8);
       const endVal = readBits(buf, payloadStart + len * 8, 16);
-      const ok = crc16(bytes) === crc && endVal === ENDSYNC;
+      const ok = crc32(bytes) === crc && endVal === ENDSYNC;
 
       if (ok) {
-        this.solved = { text: bytesToText(bytes), byteLength: len };
+        this.solved = { type, bytes, byteLength: len };
         this.searchPos = pos + totalBits;
         return;
       }
-      // Falscher Treffer (CRC/ENDSYNC passt nicht) -> hinter diesem SYNC weitersuchen.
       this.searchPos = pos + 1;
     }
     this.searchPos = Math.max(this.searchPos, buf.length - 16);

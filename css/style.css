@@ -62,6 +62,24 @@ input[type="range"] { accent-color: var(--accent); }
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 560px) { .controls { grid-template-columns: 1fr; } }
 
+/* Tabs (Text/Datei) */
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.tab { background: var(--panel2); border: 1px solid #313869; }
+.tab.active { background: var(--accent); color: #0b0e1c; border-color: var(--accent); font-weight: 600; }
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed #3a4280; border-radius: 12px; padding: 26px 16px; text-align: center;
+  cursor: pointer; color: var(--muted); transition: border-color .12s, background .12s;
+}
+.dropzone:hover { border-color: var(--accent); }
+.dropzone.drag { border-color: var(--ok); background: rgba(74,208,122,.08); }
+.dz-ico { font-size: 34px; }
+.dz-link { color: var(--accent); text-decoration: underline; }
+.fileinfo { margin-top: 10px; background: var(--panel2); border: 1px solid #313869; border-radius: 10px; padding: 10px 12px; line-height: 1.5; }
+.estimate { color: var(--warn); font-size: 13px; min-height: 18px; }
+.eta { color: var(--accent); font-size: 14px; min-height: 18px; font-variant-numeric: tabular-nums; }
+
 .btnrow { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 button {
   background: var(--panel2); color: var(--text); border: 1px solid #3a4280;
@@ -84,7 +102,9 @@ button.hidden, .hidden { display: none !important; }
 
 .result { margin-top: 14px; background: #10241a; border: 1px solid #2c6e49; border-radius: 10px; padding: 14px; }
 .result h3 { margin: 0 0 8px; color: var(--ok); }
-.result pre { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 16px; }
+.result pre { white-space: pre-wrap; word-break: break-word; margin: 0 0 10px; font-size: 16px; }
+.dlbtn { display: inline-block; background: var(--ok); color: #06170d; font-weight: 600; text-decoration: none; padding: 10px 16px; border-radius: 10px; margin-top: 4px; }
+.preview { display: block; max-width: 100%; max-height: 320px; margin-top: 12px; border-radius: 8px; }
 
 /* Sender stage with bars */
 .stage { background: #000; border-radius: var(--radius); overflow: hidden; }

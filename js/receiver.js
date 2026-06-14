@@ -38,6 +38,7 @@ export class Receiver {
     this.dataMax = [];
     this.symbolSamples = []; // pro Frame: Array von Datenbits
     this.lastEdge = performance.now();
+    this.symbolPeriod = null; // gemessene Symboldauer in ms (EMA)
     this.fpsT = performance.now();
     this.fpsN = 0;
     this.fps = 0;
@@ -230,6 +231,10 @@ export class Receiver {
 
     if (this.clockBin !== null && cur !== this.clockBin && cur !== null) {
       // Flanke -> Symbol abschließen: Mehrheitsentscheid je Datenbalken.
+      const dt = now - this.lastEdge;
+      if (dt > 20 && dt < 2000) {
+        this.symbolPeriod = this.symbolPeriod == null ? dt : this.symbolPeriod * 0.8 + dt * 0.2;
+      }
       this._commitSymbol();
       this.lastEdge = now;
     }
@@ -282,6 +287,8 @@ export class Receiver {
       contrast: Math.round(this.lastContrast || 0),
       signalLost: !!this.signalLost,
       solved: d.solved,
+      candidateType: d.candidate ? d.candidate.type : null,
+      symbolPeriod: this.symbolPeriod,
       progress,
       bytes,
       total,

@@ -1,19 +1,24 @@
-// sender.js — Sendemodus: Daten als blinkende Balken darstellen.
-import { buildBitstream } from './protocol.js';
+// sender.js — Sendemodus: Bitstrom als blinkende Balken darstellen.
 
-const CAL_SYMBOLS = 24; // Symbole für die Kalibrier-/Streifenphase
-const GAP_SYMBOLS = 8; // schwarze Pause zwischen zwei Durchläufen
+export const CAL_SYMBOLS = 24; // Symbole für die Kalibrier-/Streifenphase
+export const GAP_SYMBOLS = 8; // schwarze Pause zwischen zwei Durchläufen
+
+/** Symbole pro Durchlauf für einen Bitstrom. */
+export function symbolsPerLoop(bitLength, dataBars) {
+  return CAL_SYMBOLS + Math.ceil(bitLength / dataBars) + GAP_SYMBOLS;
+}
+
+/** Geschätzte Dauer eines Durchlaufs in Sekunden. */
+export function estimateLoopSeconds(bitLength, dataBars, symbolRate) {
+  return symbolsPerLoop(bitLength, dataBars) / symbolRate;
+}
 
 export class Sender {
-  /**
-   * @param {HTMLElement} barsEl  Container für die Balken
-   * @param {object} opts { onState }
-   */
   constructor(barsEl, opts = {}) {
     this.barsEl = barsEl;
     this.onState = opts.onState || (() => {});
     this.running = false;
-    this.bars = []; // DOM-Elemente
+    this.bars = [];
     this.dataBars = 4;
     this.symbolRate = 6;
     this._raf = null;
@@ -43,23 +48,21 @@ export class Sender {
     bar.classList.toggle('black', v !== 1);
   }
 
-  /** Zeigt ein Symbol an: Takt (links) + Datenbalken. */
   _render(clock, data) {
     this._paint(this.bars[0], clock);
-    for (let j = 0; j < this.dataBars; j++) {
-      this._paint(this.bars[j + 1], data[j]);
-    }
+    for (let j = 0; j < this.dataBars; j++) this._paint(this.bars[j + 1], data[j]);
   }
 
-  start(text, { dataBars, symbolRate }) {
+  /**
+   * @param {number[]} bits Bitstrom (aus protocol.buildBitstream)
+   * @param {object} opts { dataBars, symbolRate, byteLength, label }
+   */
+  start(bits, { dataBars, symbolRate, byteLength = 0, label = '' }) {
     this.stop();
     this.buildBars(dataBars);
     this.symbolRate = symbolRate;
-
-    const { bits, byteLength, crc } = buildBitstream(text);
     this.dataBars = dataBars;
 
-    // Bits in Symbole zerlegen (je dataBars Bits, MSB = linker Datenbalken).
     const dataSymbols = [];
     for (let i = 0; i < bits.length; i += dataBars) {
       const sym = [];
@@ -68,8 +71,9 @@ export class Sender {
     }
 
     const totalPerLoop = CAL_SYMBOLS + dataSymbols.length + GAP_SYMBOLS;
+    const loopSeconds = totalPerLoop / symbolRate;
     this.running = true;
-    let k = 0; // globaler Symbolzähler (für kontinuierlichen Takt)
+    let k = 0;
     let loops = 0;
     let last = performance.now();
     const period = () => 1000 / this.symbolRate;
@@ -78,30 +82,32 @@ export class Sender {
       if (!this.running) return;
       if (now - last >= period()) {
         last += period();
-        if (now - last > period() * 3) last = now; // Drift abfangen
+        if (now - last > period() * 3) last = now;
 
         const phase = k % totalPerLoop;
-        const clock = (k % 2) === 1 ? 1 : 0;
+        const clock = k % 2 === 1 ? 1 : 0;
 
         if (phase < CAL_SYMBOLS) {
-          // Streifenmuster, das pro Symbol invertiert -> Balken zählbar.
           const data = [];
           for (let j = 0; j < dataBars; j++) data.push((j + k) % 2);
           this._render(clock, data);
         } else if (phase < CAL_SYMBOLS + dataSymbols.length) {
           this._render(clock, dataSymbols[phase - CAL_SYMBOLS]);
         } else {
-          this.setAll(0); // schwarze Pause = Loop-Trenner
+          this.setAll(0);
         }
 
         if (phase === totalPerLoop - 1) loops++;
         k++;
+        const inLoopSym = phase;
         this.onState({
           running: true,
           loops,
           byteLength,
-          crc,
+          label,
           totalBars: dataBars + 1,
+          loopSeconds,
+          loopProgress: inLoopSym / totalPerLoop,
           phase:
             phase < CAL_SYMBOLS
               ? 'Kalibrierung'
