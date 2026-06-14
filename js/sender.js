@@ -1,16 +1,17 @@
-// sender.js — Sendemodus: Bitstrom als blinkende Balken darstellen.
+// sender.js — Visueller Sendemodus: Bitstrom als blinkende Balken.
+import { getPalette, colorCss } from './palette.js';
 
-export const CAL_SYMBOLS = 24; // Symbole für die Kalibrier-/Streifenphase
-export const GAP_SYMBOLS = 8; // schwarze Pause zwischen zwei Durchläufen
+export const CAL_SYMBOLS = 24; // Kalibrier-/Streifenphase
+export const GAP_SYMBOLS = 8; // schwarze Pause zwischen Durchläufen
 
-/** Symbole pro Durchlauf für einen Bitstrom. */
-export function symbolsPerLoop(bitLength, dataBars) {
-  return CAL_SYMBOLS + Math.ceil(bitLength / dataBars) + GAP_SYMBOLS;
+const BLACK = 'rgb(0,0,0)';
+const WHITE = 'rgb(255,255,255)';
+
+export function symbolsPerLoop(bitLength, bitsPerSymbol) {
+  return CAL_SYMBOLS + Math.ceil(bitLength / bitsPerSymbol) + GAP_SYMBOLS;
 }
-
-/** Geschätzte Dauer eines Durchlaufs in Sekunden. */
-export function estimateLoopSeconds(bitLength, dataBars, symbolRate) {
-  return symbolsPerLoop(bitLength, dataBars) / symbolRate;
+export function estimateLoopSeconds(bitLength, bitsPerSymbol, symbolRate) {
+  return symbolsPerLoop(bitLength, bitsPerSymbol) / symbolRate;
 }
 
 export class Sender {
@@ -28,53 +29,49 @@ export class Sender {
     this.dataBars = dataBars;
     this.barsEl.innerHTML = '';
     this.bars = [];
-    const total = dataBars + 1; // + Takt-Balken
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < dataBars + 1; i++) {
       const bar = document.createElement('div');
       bar.className = 'bar';
       if (i === 0) bar.classList.add('clock');
       this.barsEl.appendChild(bar);
       this.bars.push(bar);
     }
-    this.setAll(0);
+    this.bars.forEach((b) => (b.style.background = BLACK));
   }
 
-  setAll(v) {
-    for (const bar of this.bars) this._paint(bar, v);
-  }
-
-  _paint(bar, v) {
-    bar.classList.toggle('white', v === 1);
-    bar.classList.toggle('black', v !== 1);
-  }
-
-  _render(clock, data) {
-    this._paint(this.bars[0], clock);
-    for (let j = 0; j < this.dataBars; j++) this._paint(this.bars[j + 1], data[j]);
+  _renderColors(colors) {
+    for (let i = 0; i < this.bars.length; i++) this.bars[i].style.background = colors[i];
   }
 
   /**
-   * @param {number[]} bits Bitstrom (aus protocol.buildBitstream)
-   * @param {object} opts { dataBars, symbolRate, byteLength, label }
+   * @param {number[]} bits Bitstrom
+   * @param {object} opts { dataBars, symbolRate, byteLength, label, paletteId }
    */
-  start(bits, { dataBars, symbolRate, byteLength = 0, label = '' }) {
+  start(bits, { dataBars, symbolRate, byteLength = 0, label = '', paletteId = 'bw' }) {
     this.stop();
     this.buildBars(dataBars);
     this.symbolRate = symbolRate;
     this.dataBars = dataBars;
+    const palette = getPalette(paletteId);
+    const bpb = palette.bitsPerBar;
+    const bitsPerSymbol = dataBars * bpb;
 
+    // Bitstrom -> Datensymbole (je dataBars Balkenwerte zu bpb Bit)
     const dataSymbols = [];
-    for (let i = 0; i < bits.length; i += dataBars) {
-      const sym = [];
-      for (let j = 0; j < dataBars; j++) sym.push(bits[i + j] ?? 0);
-      dataSymbols.push(sym);
+    for (let i = 0; i < bits.length; i += bitsPerSymbol) {
+      const vals = [];
+      for (let b = 0; b < dataBars; b++) {
+        let v = 0;
+        for (let k = 0; k < bpb; k++) v = (v << 1) | (bits[i + b * bpb + k] ?? 0);
+        vals.push(v);
+      }
+      dataSymbols.push(vals);
     }
 
     const totalPerLoop = CAL_SYMBOLS + dataSymbols.length + GAP_SYMBOLS;
     const loopSeconds = totalPerLoop / symbolRate;
     this.running = true;
-    let k = 0;
-    let loops = 0;
+    let k = 0, loops = 0;
     let last = performance.now();
     const period = () => 1000 / this.symbolRate;
 
@@ -85,35 +82,29 @@ export class Sender {
         if (now - last > period() * 3) last = now;
 
         const phase = k % totalPerLoop;
-        const clock = k % 2 === 1 ? 1 : 0;
+        const clock = k % 2 === 1 ? WHITE : BLACK;
+        const colors = new Array(dataBars + 1);
+        colors[0] = clock;
 
         if (phase < CAL_SYMBOLS) {
-          const data = [];
-          for (let j = 0; j < dataBars; j++) data.push((j + k) % 2);
-          this._render(clock, data);
+          // Streifen schwarz/weiß, pro Symbol invertiert -> Balken zählbar
+          for (let b = 0; b < dataBars; b++) colors[b + 1] = (b + k) % 2 ? WHITE : BLACK;
         } else if (phase < CAL_SYMBOLS + dataSymbols.length) {
-          this._render(clock, dataSymbols[phase - CAL_SYMBOLS]);
+          const vals = dataSymbols[phase - CAL_SYMBOLS];
+          for (let b = 0; b < dataBars; b++) colors[b + 1] = colorCss(vals[b], palette);
         } else {
-          this.setAll(0);
+          for (let b = 0; b < dataBars; b++) colors[b + 1] = BLACK;
+          colors[0] = BLACK;
         }
+        this._renderColors(colors);
 
         if (phase === totalPerLoop - 1) loops++;
         k++;
-        const inLoopSym = phase;
         this.onState({
-          running: true,
-          loops,
-          byteLength,
-          label,
-          totalBars: dataBars + 1,
-          loopSeconds,
-          loopProgress: inLoopSym / totalPerLoop,
-          phase:
-            phase < CAL_SYMBOLS
-              ? 'Kalibrierung'
-              : phase < CAL_SYMBOLS + dataSymbols.length
-                ? 'Übertragung'
-                : 'Pause',
+          running: true, loops, byteLength, label,
+          totalBars: dataBars + 1, loopSeconds,
+          phase: phase < CAL_SYMBOLS ? 'Kalibrierung'
+            : phase < CAL_SYMBOLS + dataSymbols.length ? 'Übertragung' : 'Pause',
         });
       }
       this._raf = requestAnimationFrame(tick);

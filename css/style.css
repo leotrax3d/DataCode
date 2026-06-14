@@ -59,6 +59,10 @@ textarea, input[type="text"] {
   border-radius: 10px; padding: 10px 12px; font-size: 16px; resize: vertical;
 }
 input[type="range"] { accent-color: var(--accent); }
+select {
+  background: var(--panel2); color: var(--text); border: 1px solid #313869;
+  border-radius: 10px; padding: 10px 12px; font-size: 15px;
+}
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 560px) { .controls { grid-template-columns: 1fr; } }
 
