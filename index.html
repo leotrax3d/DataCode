@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1220" />
+    <title>BlinkTransfer — Daten per blinkenden Balken</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="#/" class="brand">▮▯▮ BlinkTransfer</a>
+      <nav>
+        <a href="#/send">Senden</a>
+        <a href="#/receive">Empfangen</a>
+      </nav>
+    </header>
+
+    <!-- ----------------------------------------------------------- Home -->
+    <main id="view-home" class="view">
+      <section class="hero">
+        <h1>Daten über blinkende Balken übertragen</h1>
+        <p class="lead">
+          Übertrage Text optisch von einem Bildschirm zu einer Handykamera –
+          ganz ohne Netzwerk. Ähnlich einem TAN-Generator zeigt der Sender eine
+          konfigurierbare Anzahl schwarz/weiß blinkender Balken; der Empfänger
+          erkennt die Balkenzahl automatisch und rekonstruiert die Nachricht.
+        </p>
+        <div class="cards">
+          <a class="card" href="#/send">
+            <div class="card-ico">📤</div>
+            <h2>Senden</h2>
+            <p>Text eingeben, Balkenzahl & Tempo wählen, Übertragung starten.</p>
+          </a>
+          <a class="card" href="#/receive">
+            <div class="card-ico">📷</div>
+            <h2>Empfangen</h2>
+            <p>Kamera freigeben, Balken im Rahmen ausrichten, automatisch dekodieren.</p>
+          </a>
+        </div>
+        <details class="how">
+          <summary>Wie funktioniert das?</summary>
+          <ul>
+            <li><b>Takt-Balken (ganz links):</b> blinkt bei jedem Symbol – sorgt für selbstgetaktete, FPS-unabhängige Abtastung.</li>
+            <li><b>Datenbalken:</b> tragen je Symbol mehrere Bits (so viele wie Datenbalken).</li>
+            <li><b>Kalibrierung:</b> ein Streifenmuster am Anfang lässt den Empfänger die Balken automatisch zählen.</li>
+            <li><b>Header:</b> überträgt Länge & CRC-Prüfsumme, damit am Ende die Vollständigkeit geprüft werden kann.</li>
+            <li><b>Schleife:</b> die Übertragung wiederholt sich – fängt der Empfänger eine fehlerhafte Kopie ab, klappt es beim nächsten Durchlauf.</li>
+          </ul>
+        </details>
+      </section>
+    </main>
+
+    <!-- ----------------------------------------------------------- Senden -->
+    <section id="view-send" class="view">
+      <div class="panel">
+        <h2>Senden</h2>
+        <label class="field">
+          <span>Nachricht</span>
+          <textarea id="msg" rows="3" placeholder="Text zum Übertragen …">Hallo Welt!</textarea>
+        </label>
+        <div class="controls">
+          <label class="field">
+            <span>Datenbalken: <b id="barsCountVal">4</b> (+1 Takt)</span>
+            <input id="barsCount" type="range" min="1" max="10" value="4" />
+          </label>
+          <label class="field">
+            <span>Tempo: <b id="rateVal">6</b> Symbole/s</span>
+            <input id="rate" type="range" min="2" max="14" value="6" />
+          </label>
+        </div>
+        <div class="btnrow">
+          <button id="startSend" class="primary">▶ Übertragung starten</button>
+          <button id="stopSend">■ Stopp</button>
+          <button id="fullscreen">⛶ Vollbild</button>
+        </div>
+        <p id="sendStatus" class="status"></p>
+        <p class="hint">Tipp: niedrigeres Tempo = zuverlässiger. Den Sender-Bildschirm
+          ruhig und gut sichtbar vor die Empfängerkamera halten.</p>
+      </div>
+      <div id="senderStage" class="stage">
+        <div class="stage-labels"><span class="lbl-clock">Takt</span><span>Datenbalken →</span></div>
+        <div id="bars" class="bars"></div>
+      </div>
+    </section>
+
+    <!-- --------------------------------------------------------- Empfangen -->
+    <section id="view-receive" class="view">
+      <div class="panel">
+        <h2>Empfangen</h2>
+        <div class="btnrow">
+          <button id="startRecv" class="primary">📷 Kamera starten</button>
+          <button id="stopRecv" class="hidden">■ Stopp</button>
+          <button id="rescan" class="hidden">↻ Neu suchen</button>
+        </div>
+        <p id="recvStatus" class="status">Kamera starten und die blinkenden Balken in den Rahmen bringen.</p>
+        <div id="progressWrap" class="progress hidden"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="resultBox" class="result hidden">
+          <h3>✓ Empfangene Nachricht</h3>
+          <pre id="resultText"></pre>
+        </div>
+        <p id="recvDebug" class="debug"></p>
+        <p class="hint">Halte die Kamera so, dass alle Balken vollständig in den
+          weißen Rahmen passen. Der Empfänger zählt die Balken selbst.</p>
+      </div>
+      <div class="camwrap">
+        <video id="cam" playsinline muted></video>
+        <div class="guide"><span class="guide-hint">Balken hier ausrichten</span></div>
+      </div>
+    </section>
+
+    <footer class="foot">Funktioniert offline · Open Source · GitHub Pages</footer>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
