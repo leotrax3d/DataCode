@@ -2,12 +2,12 @@
 import { getPalette, classifyValue } from './palette.js';
 
 const ROI_W = 256;
-const ROI_H = 24;
+const ROI_H = 28;
 const MAX_BARS = 12;
-const MIN_CONTRAST = 28;
-const STABLE_FRAMES = 8;
+const MIN_CONTRAST = 22;
+const STABLE_FRAMES = 6;
 const LOST_MS = 1600;
-const RESEARCH_MS = 3500;
+const RESEARCH_MS = 4000;
 
 export class Receiver {
   constructor(video, opts = {}) {
@@ -82,8 +82,10 @@ export class Receiver {
   _profile() {
     const v = this.video;
     if (!v.videoWidth) return null;
-    const sw = v.videoWidth * 0.8;
-    const sh = v.videoHeight * 0.36;
+    // Zentrale 3:2-Region (gleiches Format wie das Blinkfeld/Scanfeld).
+    let sw = v.videoWidth * 0.82;
+    let sh = sw * (2 / 3);
+    if (sh > v.videoHeight * 0.82) { sh = v.videoHeight * 0.82; sw = sh * 1.5; }
     const sx = (v.videoWidth - sw) / 2;
     const sy = (v.videoHeight - sh) / 2;
     this.ctx.drawImage(v, sx, sy, sw, sh, 0, 0, ROI_W, ROI_H);

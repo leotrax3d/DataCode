@@ -82,10 +82,10 @@ function makeInput(prefix, onChange) {
       if (state.mode === 'file') {
         if (!state.file) return null;
         const b = await fileBytes(state.file);
-        return { ...buildFileFrame(state.file.name, state.file.type, b, parity), label: '📎 ' + state.file.name };
+        return { ...buildFileFrame(state.file.name, state.file.type, b, parity), label: 'Datei: ' + state.file.name };
       }
       if (!msg.value) return null;
-      return { ...buildTextFrame(msg.value, parity), label: '📝 Text' };
+      return { ...buildTextFrame(msg.value, parity), label: 'Text' };
     },
   };
 }
@@ -109,28 +109,29 @@ function renderResult(ui, solved) {
   const p = decodePayload(solved.type, solved.bytes);
   ui.body.innerHTML = '';
   if (p.kind === 'text') {
-    const h = document.createElement('h3'); h.textContent = '✓ Empfangener Text';
+    const h = document.createElement('h3'); h.textContent = 'Empfangener Text';
     const pre = document.createElement('pre'); pre.textContent = p.text;
-    const copy = document.createElement('button'); copy.textContent = '📋 Kopieren';
-    copy.onclick = () => { navigator.clipboard?.writeText(p.text); copy.textContent = '✓ Kopiert'; setTimeout(() => (copy.textContent = '📋 Kopieren'), 1500); };
+    const copy = document.createElement('button'); copy.textContent = 'Kopieren';
+    copy.onclick = () => { navigator.clipboard?.writeText(p.text); copy.textContent = 'Kopiert'; setTimeout(() => (copy.textContent = 'Kopieren'), 1500); };
     ui.body.append(h, pre, copy);
   } else {
-    const h = document.createElement('h3'); h.textContent = '✓ Empfangene Datei';
+    const h = document.createElement('h3'); h.textContent = 'Empfangene Datei';
     const meta = document.createElement('p'); meta.innerHTML = `<b>${p.name}</b> · ${fmtBytes(p.size)} · ${p.mime}`;
     const blob = new Blob([p.bytes], { type: p.mime || 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
-    const dl = document.createElement('a'); dl.href = url; dl.download = p.name || 'datei.bin'; dl.className = 'dlbtn'; dl.textContent = '⬇ Herunterladen';
+    const dl = document.createElement('a'); dl.href = url; dl.download = p.name || 'datei.bin'; dl.className = 'dlbtn'; dl.textContent = 'Herunterladen';
     ui.body.append(h, meta, dl);
     if ((p.mime || '').startsWith('image/')) { const img = document.createElement('img'); img.src = url; img.className = 'preview'; ui.body.append(img); }
   }
   ui.box.classList.remove('hidden');
+  ui.box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   navigator.vibrate?.([120, 60, 120]);
 }
 /** Aktualisiert Fortschritt + Restzeit aus Decoder-Zustand. */
 function renderDecode(ui, decoder, bitsPerSymbol, symbolPeriodMs, idleText) {
   if (decoder.solved) {
     ui.wrap.classList.remove('hidden'); ui.bar.style.width = '100%'; ui.eta.textContent = '';
-    ui.status.innerHTML = `<span class="ok">✓ Vollständig & Prüfsumme korrekt (${fmtBytes(decoder.solved.byteLength)})</span>`;
+    ui.status.innerHTML = `<span class="ok">Vollständig empfangen — Prüfsumme korrekt (${fmtBytes(decoder.solved.byteLength)})</span>`;
     renderResult(ui, decoder.solved);
     return;
   }
@@ -139,11 +140,11 @@ function renderDecode(ui, decoder, bitsPerSymbol, symbolPeriodMs, idleText) {
     ui.wrap.classList.remove('hidden');
     const prog = c.codedLen ? c.receivedCoded / c.codedLen : 0;
     ui.bar.style.width = Math.round(prog * 100) + '%';
-    ui.status.innerHTML = `Empfange … ${Math.round(prog * 100)} %` + (c.parity ? ' · FEC aktiv' : '');
+    ui.status.innerHTML = `Empfange … ${Math.round(prog * 100)} %` + (c.parity ? ' · Fehlerkorrektur aktiv' : '');
     if (symbolPeriodMs && bitsPerSymbol) {
       const bps = bitsPerSymbol / (symbolPeriodMs / 1000);
       const eta = ((c.codedLen - c.receivedCoded) * 8) / bps;
-      ui.eta.textContent = `⏱ Rest ~${fmtDuration(eta)} · ${(bps / 8).toFixed(1)} B/s`;
+      ui.eta.textContent = `Rest ~${fmtDuration(eta)} · ${(bps / 8).toFixed(1)} B/s`;
     }
   } else {
     ui.wrap.classList.add('hidden'); ui.eta.textContent = '';
@@ -165,7 +166,7 @@ function updateSendEstimate() {
   const bits = OVERHEAD_BITS + bytes * 8 * (1 + (+$('fecSel').value) / 32);
   const secs = estimateLoopSeconds(bits, visualBitsPerSymbol(), +$('rate').value);
   let t = `Geschätzte Dauer pro Durchlauf: ~${fmtDuration(secs)} (${fmtBytes(bytes)})`;
-  if (secs > 120) t += ' ⚠ große Datenmenge – dauert lange.';
+  if (secs > 120) t += ' — große Datenmenge, dauert lange.';
   $('estimate').textContent = t;
 }
 ['barsCount', 'rate', 'paletteSel', 'fecSel'].forEach((id) => $(id).addEventListener('input', () => {
@@ -173,6 +174,11 @@ function updateSendEstimate() {
   if (id === 'rate') $('rateVal').textContent = $(id).value;
   updateSendEstimate();
 }));
+
+// Größe des Blinkfelds
+const stageSize = $('stageSize');
+function applyStageSize() { $('senderStage').style.setProperty('--stage-w', stageSize.value + '%'); }
+stageSize.addEventListener('input', applyStageSize);
 
 $('startSend').addEventListener('click', async () => {
   try {
@@ -214,8 +220,13 @@ $('stopRecv').addEventListener('click', () => { receiver.stop(); $('startRecv').
 $('rescan').addEventListener('click', () => { receiver.rescan(); recvDecoder.reset(); recvUI.lastKey = null; recvUI.box.classList.add('hidden'); });
 
 function renderReceiverState(s) {
-  if (s.error) { recvUI.status.innerHTML = `<span class="err">⚠ ${s.error}</span>`; $('startRecv').classList.remove('hidden'); $('stopRecv').classList.add('hidden'); return; }
+  if (s.error) { recvUI.status.innerHTML = `<span class="err">${s.error}</span>`; $('startRecv').classList.remove('hidden'); $('stopRecv').classList.add('hidden'); return; }
   if (!s.running) return;
+  // Bei Erfolg Kamera automatisch stoppen (klarer Abschluss).
+  if (recvDecoder.solved && receiver.running) {
+    receiver.stop();
+    $('startRecv').classList.remove('hidden'); $('stopRecv').classList.add('hidden'); $('rescan').classList.remove('hidden');
+  }
   const bpb = getPalette($('paletteSelR').value).bitsPerBar;
   const bitsPerSymbol = (s.dataBars || 0) * bpb;
   if (!recvDecoder.solved && s.mode === 'SEARCHING') {
@@ -241,7 +252,7 @@ function updateAudioEstimate() {
   const syms = bits / AUDIO.BITS_PER_SYM + 14;
   const secs = syms * audioSymbolSec() + 0.4;
   let t = `Geschätzte Dauer pro Durchlauf: ~${fmtDuration(secs)} (${fmtBytes(bytes)})`;
-  if (secs > 120) t += ' ⚠ dauert lange.';
+  if (secs > 120) t += ' — dauert lange.';
   $('aEstimate').textContent = t;
 }
 ['aRate', 'aFecSel'].forEach((id) => $(id).addEventListener('change', updateAudioEstimate));
@@ -258,7 +269,7 @@ $('aStopSend').addEventListener('click', () => audioSender.stop());
 function renderAudioSendState(s) {
   if (!s.running) { if (s.running === false) $('aSendStatus').textContent = 'Gestoppt.'; return; }
   const st = $('aSendStatus');
-  st.innerHTML = `🔊 Sende Töne · ${st.dataset.label || ''} · ${fmtBytes(+st.dataset.bytes || 0)} · Durchlauf ${s.loops} · ~${fmtDuration(s.loopSec)}/Durchlauf`;
+  st.innerHTML = `Sende Töne · ${st.dataset.label || ''} · ${fmtBytes(+st.dataset.bytes || 0)} · Durchlauf ${s.loops} · ~${fmtDuration(s.loopSec)}/Durchlauf`;
 }
 
 // ===================================================== Audio-Empfänger ===
@@ -277,8 +288,12 @@ $('aStartRecv').addEventListener('click', async () => {
 });
 $('aStopRecv').addEventListener('click', () => { audioReceiver.stop(); $('aStartRecv').classList.remove('hidden'); $('aStopRecv').classList.add('hidden'); arecvUI.status.textContent = 'Gestoppt.'; });
 function renderAudioRecvState(s) {
-  if (s.error) { arecvUI.status.innerHTML = `<span class="err">⚠ ${s.error}</span>`; $('aStartRecv').classList.remove('hidden'); $('aStopRecv').classList.add('hidden'); return; }
+  if (s.error) { arecvUI.status.innerHTML = `<span class="err">${s.error}</span>`; $('aStartRecv').classList.remove('hidden'); $('aStopRecv').classList.add('hidden'); return; }
   if (!s.running) return;
+  if (aDecoder.solved && audioReceiver.running) {
+    audioReceiver.stop();
+    $('aStartRecv').classList.remove('hidden'); $('aStopRecv').classList.add('hidden');
+  }
   if (!aDecoder.solved && !aDecoder.candidate) {
     arecvUI.status.textContent = s.state === 'receiving' ? 'Töne erkannt – empfange …' : 'Höre … Töne abspielen lassen.';
     arecvUI.wrap.classList.add('hidden');
@@ -289,6 +304,7 @@ function renderAudioRecvState(s) {
 }
 
 // Init
+applyStageSize();
 updateSendEstimate();
 updateAudioEstimate();
 route();

@@ -3,13 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f1220" />
-    <title>BlinkTransfer — Daten per Licht & Ton übertragen</title>
+    <meta name="theme-color" content="#faf9f5" />
+    <title>BlinkTransfer — Daten per Licht und Ton</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
     <header class="topbar">
-      <a href="#/" class="brand">▮▯▮ BlinkTransfer</a>
+      <a href="#/" class="brand">BlinkTransfer</a>
       <nav>
         <a href="#/send">Licht senden</a>
         <a href="#/receive">Licht empfangen</a>
@@ -18,117 +21,124 @@
       </nav>
     </header>
 
-    <!-- ----------------------------------------------------------- Home -->
+    <!-- Startseite -->
     <main id="view-home" class="view">
       <section class="hero">
-        <h1>Daten über Licht & Ton übertragen</h1>
+        <h1>Daten über Licht und Ton übertragen</h1>
         <p class="lead">
-          Übertrage Text und Dateien ohne Netzwerk – wahlweise <b>optisch</b> über
-          blinkende Balken (Bildschirm → Kamera) oder <b>akustisch</b> über Töne
-          (Lautsprecher → Mikrofon). Mit automatischer Erkennung, Prüfsumme,
-          <b>Fehlerkorrektur (FEC)</b> und optional schnellerer Übertragung per
-          Graustufen/Farben.
+          Übertrage Text und Dateien ohne Netzwerk — wahlweise optisch über
+          blinkende Balken (Bildschirm zu Kamera) oder akustisch über Töne
+          (Lautsprecher zu Mikrofon). Mit automatischer Erkennung, Prüfsumme,
+          Fehlerkorrektur und optional schnellerer Übertragung per Farben.
         </p>
         <div class="cards">
-          <a class="card" href="#/send"><div class="card-ico">📤</div><h2>Licht senden</h2><p>Text/Datei als blinkende Balken, FEC & Farben optional.</p></a>
-          <a class="card" href="#/receive"><div class="card-ico">📷</div><h2>Licht empfangen</h2><p>Kamera ausrichten, automatisch dekodieren.</p></a>
-          <a class="card" href="#/asend"><div class="card-ico">🔊</div><h2>Audio senden</h2><p>Text/Datei als Tonfolge (16-Ton-FSK).</p></a>
-          <a class="card" href="#/areceive"><div class="card-ico">🎙️</div><h2>Audio empfangen</h2><p>Mikrofon hört zu und rekonstruiert die Daten.</p></a>
+          <a class="card" href="#/send"><span class="tag">Licht</span><h2>Senden</h2><p>Text oder Datei als blinkende Balken. Größe, Tempo, Farben und Fehlerkorrektur einstellbar.</p></a>
+          <a class="card" href="#/receive"><span class="tag">Licht</span><h2>Empfangen</h2><p>Kamera auf das Feld richten — Balken werden automatisch erkannt und dekodiert.</p></a>
+          <a class="card" href="#/asend"><span class="tag">Audio</span><h2>Senden</h2><p>Text oder Datei als Tonfolge über den Lautsprecher.</p></a>
+          <a class="card" href="#/areceive"><span class="tag">Audio</span><h2>Empfangen</h2><p>Das Mikrofon hört zu und rekonstruiert die Daten.</p></a>
         </div>
         <details class="how">
           <summary>Wie funktioniert das?</summary>
           <ul>
-            <li><b>Licht:</b> ein Takt-Balken (links) blinkt jedes Symbol → selbst­getaktete Abtastung; ein Streifenmuster am Anfang lässt den Empfänger die Balken automatisch zählen.</li>
-            <li><b>Audio:</b> 16 Töne kodieren je 4 Bit; eine kurze Präambel hilft beim Einrasten.</li>
-            <li><b>FEC:</b> Reed-Solomon korrigiert fehlerhafte Bytes pro Block (mit Interleaving gegen Bündelfehler).</li>
-            <li><b>Farben/Graustufen:</b> mehr Bits pro Balken = schneller (muss bei Sender & Empfänger gleich sein).</li>
-            <li><b>Sicherheit:</b> Länge + CRC-32 prüfen die Vollständigkeit; die Übertragung wiederholt sich in einer Schleife.</li>
+            <li>Licht: ein Takt-Balken (links) blinkt jedes Symbol für eine taktgenaue Abtastung; ein Streifenmuster am Anfang lässt den Empfänger die Balken automatisch zählen.</li>
+            <li>Audio: 16 Töne kodieren je 4 Bit; eine kurze Präambel hilft beim Einrasten.</li>
+            <li>Fehlerkorrektur: Reed-Solomon korrigiert fehlerhafte Bytes (mit Interleaving gegen Bündelfehler).</li>
+            <li>Farben/Graustufen: mehr Bits pro Balken bedeutet schneller — muss bei Sender und Empfänger gleich eingestellt sein.</li>
+            <li>Vollständigkeit: Länge und CRC-32 sichern die Daten; die Übertragung läuft in einer Schleife.</li>
           </ul>
         </details>
       </section>
     </main>
 
-    <!-- ------------------------------------------------------- Licht senden -->
+    <!-- Licht senden -->
     <section id="view-send" class="view">
-      <div class="panel">
-        <h2>Licht senden</h2>
-        <div class="tabs"><button id="sndTabText" class="tab active">📝 Text</button><button id="sndTabFile" class="tab">📎 Datei</button></div>
-        <div id="sndPaneText"><label class="field"><span>Nachricht</span><textarea id="sndMsg" rows="3" placeholder="Text …">Hallo Welt!</textarea></label></div>
-        <div id="sndPaneFile" class="hidden">
-          <div id="sndDropzone" class="dropzone"><div class="dz-ico">📁</div><p>Datei hierher ziehen oder <span class="dz-link">auswählen</span></p><p class="hint">Optisch ist langsam – am besten kleine Dateien.</p></div>
-          <input id="sndFileInput" type="file" class="hidden" /><div id="sndFileInfo" class="fileinfo hidden"></div>
+      <div class="layout">
+        <div class="panel">
+          <h2>Licht senden</h2>
+          <div class="tabs"><button id="sndTabText" class="tab active">Text</button><button id="sndTabFile" class="tab">Datei</button></div>
+          <div id="sndPaneText"><label class="field"><span>Nachricht</span><textarea id="sndMsg" rows="3" placeholder="Text eingeben …">Hallo Welt!</textarea></label></div>
+          <div id="sndPaneFile" class="hidden">
+            <div id="sndDropzone" class="dropzone"><p>Datei hierher ziehen oder <span class="dz-link">auswählen</span></p><p class="hint">Optisch ist langsam — am besten kleine Dateien.</p></div>
+            <input id="sndFileInput" type="file" class="hidden" /><div id="sndFileInfo" class="fileinfo hidden"></div>
+          </div>
+          <div class="controls">
+            <label class="field"><span>Datenbalken: <b id="barsCountVal">5</b> (plus 1 Takt)</span><input id="barsCount" type="range" min="1" max="10" value="5" /></label>
+            <label class="field"><span>Tempo: <b id="rateVal">5</b> Symbole/s</span><input id="rate" type="range" min="2" max="14" value="5" /></label>
+            <label class="field"><span>Farbmodus (schneller, empfindlicher)</span>
+              <select id="paletteSel"><option value="bw">Schwarz/Weiß (1 Bit/Balken)</option><option value="gray4">4 Graustufen (2 Bit/Balken)</option><option value="color8">8 Farben (3 Bit/Balken)</option></select></label>
+            <label class="field"><span>Fehlerkorrektur</span>
+              <select id="fecSel"><option value="0">Keine</option><option value="4">Leicht</option><option value="8" selected>Mittel</option><option value="16">Stark</option></select></label>
+          </div>
+          <div class="btnrow"><button id="startSend" class="primary">Start</button><button id="stopSend">Stopp</button><button id="fullscreen">Vollbild</button></div>
+          <p id="estimate" class="estimate"></p>
+          <p id="sendStatus" class="status"></p>
+          <p class="hint">Tipp: niedriges Tempo und Schwarz/Weiß sind am zuverlässigsten. Bildschirm ruhig vor die Kamera halten.</p>
         </div>
-        <div class="controls">
-          <label class="field"><span>Datenbalken: <b id="barsCountVal">4</b> (+1 Takt)</span><input id="barsCount" type="range" min="1" max="10" value="4" /></label>
-          <label class="field"><span>Tempo: <b id="rateVal">6</b> Symbole/s</span><input id="rate" type="range" min="2" max="14" value="6" /></label>
-          <label class="field"><span>Farbmodus (schneller, empfindlicher)</span>
-            <select id="paletteSel"><option value="bw">Schwarz/Weiß (1 Bit/Balken)</option><option value="gray4">4 Graustufen (2 Bit/Balken)</option><option value="color8">8 Farben (3 Bit/Balken)</option></select></label>
-          <label class="field"><span>Fehlerkorrektur (FEC)</span>
-            <select id="fecSel"><option value="0">Keine</option><option value="4">Leicht</option><option value="8" selected>Mittel</option><option value="16">Stark</option></select></label>
+        <div class="stage-wrap">
+          <div class="size-row"><span>Feldgröße</span><input id="stageSize" type="range" min="18" max="100" value="46" /></div>
+          <div id="senderStage" class="stage">
+            <div class="stage-labels"><span class="lbl-clock">Takt</span><span>Datenbalken</span></div>
+            <div id="bars" class="bars"></div>
+          </div>
+          <p class="hint">Das Blinkfeld hat dasselbe Format wie das Scanfeld des Empfängers.</p>
         </div>
-        <div class="btnrow"><button id="startSend" class="primary">▶ Start</button><button id="stopSend">■ Stopp</button><button id="fullscreen">⛶ Vollbild</button></div>
-        <p id="estimate" class="estimate"></p>
-        <p id="sendStatus" class="status"></p>
-        <p class="hint">Tipp: niedrigeres Tempo & „Schwarz/Weiß" = zuverlässiger. Bildschirm ruhig vor die Kamera halten.</p>
-      </div>
-      <div id="senderStage" class="stage">
-        <div class="stage-labels"><span class="lbl-clock">Takt</span><span>Datenbalken →</span></div>
-        <div id="bars" class="bars"></div>
       </div>
     </section>
 
-    <!-- ----------------------------------------------------- Licht empfangen -->
+    <!-- Licht empfangen -->
     <section id="view-receive" class="view">
-      <div class="panel">
-        <h2>Licht empfangen</h2>
-        <label class="field"><span>Farbmodus (muss zum Sender passen)</span>
-          <select id="paletteSelR"><option value="bw">Schwarz/Weiß (1 Bit/Balken)</option><option value="gray4">4 Graustufen (2 Bit/Balken)</option><option value="color8">8 Farben (3 Bit/Balken)</option></select></label>
-        <div class="btnrow"><button id="startRecv" class="primary">📷 Kamera starten</button><button id="stopRecv" class="hidden">■ Stopp</button><button id="rescan" class="hidden">↻ Neu suchen</button></div>
-        <p id="recvStatus" class="status">Kamera starten und die blinkenden Balken in den Rahmen bringen.</p>
-        <div id="recvProgressWrap" class="progress hidden"><div id="recvProgressBar" class="progress-bar"></div></div>
-        <p id="recvEta" class="eta"></p>
-        <div id="recvResultBox" class="result hidden"><div id="recvResultBody"></div></div>
-        <p id="recvDebug" class="debug"></p>
+      <div class="layout">
+        <div class="panel">
+          <h2>Licht empfangen</h2>
+          <label class="field"><span>Farbmodus (muss zum Sender passen)</span>
+            <select id="paletteSelR"><option value="bw">Schwarz/Weiß (1 Bit/Balken)</option><option value="gray4">4 Graustufen (2 Bit/Balken)</option><option value="color8">8 Farben (3 Bit/Balken)</option></select></label>
+          <div class="btnrow"><button id="startRecv" class="primary">Kamera starten</button><button id="stopRecv" class="hidden">Stopp</button><button id="rescan" class="hidden">Neu suchen</button></div>
+          <p id="recvStatus" class="status">Kamera starten und die blinkenden Balken in den Rahmen bringen.</p>
+          <div id="recvProgressWrap" class="progress hidden"><div id="recvProgressBar" class="progress-bar"></div></div>
+          <p id="recvEta" class="eta"></p>
+          <div id="recvResultBox" class="result hidden"><div id="recvResultBody"></div></div>
+          <p id="recvDebug" class="debug"></p>
+        </div>
+        <div class="camwrap"><video id="cam" playsinline muted></video><div class="guide"><span class="guide-hint">Balken hier ausrichten</span></div></div>
       </div>
-      <div class="camwrap"><video id="cam" playsinline muted></video><div class="guide"><span class="guide-hint">Balken hier ausrichten</span></div></div>
     </section>
 
-    <!-- ------------------------------------------------------- Audio senden -->
+    <!-- Audio senden -->
     <section id="view-asend" class="view">
       <div class="panel">
         <h2>Audio senden</h2>
-        <div class="tabs"><button id="asndTabText" class="tab active">📝 Text</button><button id="asndTabFile" class="tab">📎 Datei</button></div>
-        <div id="asndPaneText"><label class="field"><span>Nachricht</span><textarea id="asndMsg" rows="3" placeholder="Text …">Hallo per Ton!</textarea></label></div>
+        <div class="tabs"><button id="asndTabText" class="tab active">Text</button><button id="asndTabFile" class="tab">Datei</button></div>
+        <div id="asndPaneText"><label class="field"><span>Nachricht</span><textarea id="asndMsg" rows="3" placeholder="Text eingeben …">Hallo per Ton!</textarea></label></div>
         <div id="asndPaneFile" class="hidden">
-          <div id="asndDropzone" class="dropzone"><div class="dz-ico">📁</div><p>Datei hierher ziehen oder <span class="dz-link">auswählen</span></p><p class="hint">Audio ist langsam – kleine Dateien.</p></div>
+          <div id="asndDropzone" class="dropzone"><p>Datei hierher ziehen oder <span class="dz-link">auswählen</span></p><p class="hint">Audio ist langsam — kleine Dateien.</p></div>
           <input id="asndFileInput" type="file" class="hidden" /><div id="asndFileInfo" class="fileinfo hidden"></div>
         </div>
         <div class="controls">
           <label class="field"><span>Tempo (muss zum Empfänger passen)</span>
             <select id="aRate"><option value="langsam">Langsam (zuverlässig)</option><option value="mittel" selected>Mittel</option><option value="schnell">Schnell</option></select></label>
-          <label class="field"><span>Fehlerkorrektur (FEC)</span>
+          <label class="field"><span>Fehlerkorrektur</span>
             <select id="aFecSel"><option value="0">Keine</option><option value="4">Leicht</option><option value="8" selected>Mittel</option><option value="16">Stark</option></select></label>
         </div>
-        <div class="btnrow"><button id="aStartSend" class="primary">🔊 Start</button><button id="aStopSend">■ Stopp</button></div>
+        <div class="btnrow"><button id="aStartSend" class="primary">Start</button><button id="aStopSend">Stopp</button></div>
         <p id="aEstimate" class="estimate"></p>
         <p id="aSendStatus" class="status"></p>
-        <p class="hint">Lautstärke hochdrehen und Geräte nah zusammenhalten. Stille Umgebung hilft.</p>
+        <p class="hint">Lautstärke hochdrehen und Geräte nah zusammenhalten. Eine ruhige Umgebung hilft.</p>
       </div>
     </section>
 
-    <!-- ----------------------------------------------------- Audio empfangen -->
+    <!-- Audio empfangen -->
     <section id="view-areceive" class="view">
       <div class="panel">
         <h2>Audio empfangen</h2>
         <label class="field"><span>Tempo (muss zum Sender passen)</span>
           <select id="aRateR"><option value="langsam">Langsam (zuverlässig)</option><option value="mittel" selected>Mittel</option><option value="schnell">Schnell</option></select></label>
-        <div class="btnrow"><button id="aStartRecv" class="primary">🎙️ Mikrofon starten</button><button id="aStopRecv" class="hidden">■ Stopp</button></div>
+        <div class="btnrow"><button id="aStartRecv" class="primary">Mikrofon starten</button><button id="aStopRecv" class="hidden">Stopp</button></div>
         <p id="arecvStatus" class="status">Mikrofon starten und die Töne abspielen lassen.</p>
         <div id="arecvProgressWrap" class="progress hidden"><div id="arecvProgressBar" class="progress-bar"></div></div>
         <p id="arecvEta" class="eta"></p>
         <div id="arecvResultBox" class="result hidden"><div id="arecvResultBody"></div></div>
         <p id="aRecvDebug" class="debug"></p>
-        <p class="hint">Tipp: „Langsam" ist am robustesten. Echo/Geräuschunterdrückung wird automatisch deaktiviert.</p>
+        <p class="hint">Tipp: Langsam ist am robustesten. Echo- und Geräuschunterdrückung werden automatisch deaktiviert.</p>
       </div>
     </section>
 
